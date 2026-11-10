@@ -509,12 +509,46 @@ export function register(payload) {
   return publicUser(record)
 }
 
-export function listTickets() {
+export function me() {
+  return publicUser(actor())
+}
+
+export function listTickets(params = {}) {
   const user = actor()
-  return db.tickets
-    .filter((item) => user.role !== 'requester' || item.requester_id === user.id)
-    .map(hydrateTicket)
-    .sort((a, b) => codeNumber(b.code) - codeNumber(a.code))
+  let items = db.tickets.filter((item) => user.role !== 'requester' || item.requester_id === user.id)
+
+  if (params.status) items = items.filter((item) => item.status === params.status)
+  if (params.priority) items = items.filter((item) => item.priority === params.priority)
+  if (params.assignee_id === 'unassigned') items = items.filter((item) => !item.assignee_id)
+  else if (params.assignee_id) items = items.filter((item) => item.assignee_id === params.assignee_id)
+  if (params.search) {
+    const query = String(params.search).trim().toLowerCase()
+    items = items.filter((item) => item.title.toLowerCase().includes(query))
+  }
+
+  const sortBy = params.sort_by || 'created_at'
+  const direction = params.order === 'asc' ? 1 : -1
+  items = items.slice().sort((a, b) => {
+    const left = a[sortBy] ?? ''
+    const right = b[sortBy] ?? ''
+    if (left < right) return -1 * direction
+    if (left > right) return 1 * direction
+    return codeNumber(b.code) - codeNumber(a.code)
+  })
+
+  const page = Math.max(1, Number(params.page) || 1)
+  const limit = Math.max(1, Number(params.limit) || 20)
+  const total = items.length
+  const start = (page - 1) * limit
+  return {
+    tickets: items.slice(start, start + limit).map(hydrateTicket),
+    meta: {
+      page,
+      limit,
+      total,
+      total_pages: total === 0 ? 0 : Math.ceil(total / limit),
+    },
+  }
 }
 
 export function getTicket(id) {
@@ -554,17 +588,49 @@ export function createTicket(payload) {
   return hydrateTicket(record)
 }
 
-export function updateStatus(id, status) {
+export function updateTicket(id, patch = {}) {
   const user = actor()
   const record = requireTicket(id, user)
-  if (!STATUSES.includes(status)) throw new ApiError('invalid status', 400)
-  if (record.status !== status && !nextStatuses(record.status, user.role).includes(status)) {
-    throw new ApiError('status transition is not allowed', 409)
+
+  if (Object.prototype.hasOwnProperty.call(patch, 'assignee_id')) {
+    if (user.role === 'requester') {
+      throw new ApiError('forbidden: requesters cannot assign or unassign tickets', 403)
+    }
+    if (patch.assignee_id) {
+      const assignee = db.users.find((item) => item.id === patch.assignee_id)
+      if (!assignee) throw new ApiError('assignee not found', 404)
+      if (assignee.role !== 'agent' && assignee.role !== 'admin') {
+        throw new ApiError('assignee must be an agent or admin', 400)
+      }
+      record.assignee_id = assignee.id
+    } else {
+      record.assignee_id = null
+    }
   }
-  record.status = status
+
+  if (patch.priority) {
+    if (!PRIORITIES.includes(patch.priority)) throw new ApiError('invalid input', 400)
+    record.priority = patch.priority
+  }
+
+  if (patch.status && patch.status !== record.status) {
+    if (!STATUSES.includes(patch.status)) throw new ApiError('invalid status', 400)
+    if (!nextStatuses(record.status, user.role).includes(patch.status)) {
+      throw new ApiError(
+        `status transition is not allowed: cannot change status from ${record.status} to ${patch.status} as ${user.role}`,
+        409,
+      )
+    }
+    record.status = patch.status
+  }
+
   record.updated_at = new Date().toISOString()
   save()
   return hydrateTicket(record)
+}
+
+export function updateStatus(id, status) {
+  return updateTicket(id, { status })
 }
 
 export function listComments(ticketId) {
@@ -577,9 +643,10 @@ export function listComments(ticketId) {
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
 }
 
-export function createComment(ticketId, body) {
+export function createComment(ticketId, body, isInternal = false) {
   const user = actor()
   requireTicket(ticketId, user)
+  if (isInternal && user.role === 'requester') throw new ApiError('forbidden', 403)
   const text = String(body || '').trim()
   if (!text || text.length > 5000) throw new ApiError('invalid input', 400)
 
@@ -588,7 +655,7 @@ export function createComment(ticketId, body) {
     ticket_id: ticketId,
     author_id: user.id,
     body: text,
-    is_internal: false,
+    is_internal: Boolean(isInternal),
     created_at: new Date().toISOString(),
   }
   db.comments.push(record)

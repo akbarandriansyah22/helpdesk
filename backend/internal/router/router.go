@@ -30,9 +30,11 @@ func SetupRouter(
 
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware(authService))
+	protected.GET("/me", userHandler.Me)
 	protected.POST("/tickets", ticketHandler.Create)
 	protected.GET("/tickets", ticketHandler.List)
 	protected.GET("/tickets/:id", ticketHandler.Get)
+	protected.PATCH("/tickets/:id", ticketHandler.Update)
 	protected.PATCH("/tickets/:id/status", ticketHandler.UpdateStatus)
 	protected.GET("/tickets/:id/comments", commentHandler.List)
 	protected.POST("/tickets/:id/comments", commentHandler.Create)

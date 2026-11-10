@@ -10,16 +10,31 @@ import (
 	"github.com/yourname/helpdesk/internal/model"
 )
 
+type TicketListFilter struct {
+	Status      string
+	Priority    string
+	AssigneeID  *uuid.UUID
+	Unassigned  bool
+	Search      string
+	RequesterID *uuid.UUID
+	SortBy      string
+	Order       string
+	Limit       int
+	Offset      int
+}
+
 type TicketRepository interface {
 	Create(ctx context.Context, ticket *model.Ticket) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Ticket, error)
 	List(ctx context.Context) ([]model.Ticket, error)
+	ListFiltered(ctx context.Context, filter TicketListFilter) ([]model.Ticket, int, error)
 	Update(ctx context.Context, ticket *model.Ticket) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	Close() error
 }
 
 type ticketRepository struct {
+	db          *sql.DB
 	createStmt  *sql.Stmt
 	getByIDStmt *sql.Stmt
 	listStmt    *sql.Stmt
@@ -68,7 +83,7 @@ func NewTicketRepository(db *sql.DB) (TicketRepository, error) {
 		return nil, fmt.Errorf("new ticket repository: db is nil")
 	}
 
-	repo := &ticketRepository{}
+	repo := &ticketRepository{db: db}
 	var err error
 
 	repo.createStmt, err = db.PrepareContext(context.Background(), createTicketSQL)
@@ -174,6 +189,37 @@ func (r *ticketRepository) List(ctx context.Context) ([]model.Ticket, error) {
 		return nil, fmt.Errorf("list tickets: %w", err)
 	}
 	return tickets, nil
+}
+
+func (r *ticketRepository) ListFiltered(ctx context.Context, filter TicketListFilter) ([]model.Ticket, int, error) {
+	listSQL, listArgs, countSQL, countArgs, err := buildTicketListQuery(filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list tickets: %w", err)
+	}
+
+	var total int
+	if err := r.db.QueryRowContext(ctx, countSQL, countArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count tickets: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, listSQL, listArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list tickets: %w", err)
+	}
+	defer rows.Close()
+
+	tickets := []model.Ticket{}
+	for rows.Next() {
+		ticket, err := scanTicket(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("list tickets: %w", err)
+		}
+		tickets = append(tickets, *ticket)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("list tickets: %w", err)
+	}
+	return tickets, total, nil
 }
 
 func (r *ticketRepository) Update(ctx context.Context, ticket *model.Ticket) error {

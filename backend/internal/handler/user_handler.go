@@ -19,6 +19,20 @@ type updateRoleRequest struct {
 	Role string `json:"role" binding:"required,oneof=requester agent admin"`
 }
 
+func (h *UserHandler) Me(c *gin.Context) {
+	actorID, _, ok := currentActor(c)
+	if !ok {
+		return
+	}
+
+	user, err := h.users.GetMe(c.Request.Context(), actorID)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	writeData(c, http.StatusOK, user)
+}
+
 func (h *UserHandler) List(c *gin.Context) {
 	_, role, ok := currentActor(c)
 	if !ok {

@@ -4,74 +4,122 @@ import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import StatusBadge from '../components/StatusBadge.vue'
+import { useDirectory } from '../composables/useDirectory'
 import { PAGE_SIZE, PRIORITIES, STATUSES } from '../constants'
 import { fetchTickets, getErrorMessage } from '../services/api'
 import { avatarColor, formatDate, formatTime, initials, priorityLabel, statusLabel, ticketCode } from '../utils/format'
+import { directoryPerson } from '../utils/people'
+
+const SORTS = [
+  { value: 'created_at:desc', label: 'Newest' },
+  { value: 'created_at:asc', label: 'Oldest' },
+  { value: 'updated_at:desc', label: 'Recently updated' },
+  { value: 'title:asc', label: 'Title A–Z' },
+  { value: 'status:asc', label: 'Status' },
+  { value: 'priority:asc', label: 'Priority' },
+]
 
 const router = useRouter()
+const { people, staff, directoryError, loadDirectory } = useDirectory()
 const searchRef = ref(null)
 const tickets = ref([])
+const meta = ref({ page: 1, limit: PAGE_SIZE, total: 0, total_pages: 0 })
 const loading = ref(true)
+const loadedOnce = ref(false)
 const error = ref('')
 const search = ref('')
+const appliedSearch = ref('')
 const status = ref('')
 const priority = ref('')
 const assignee = ref('')
+const sort = ref('created_at:desc')
 const page = ref(1)
+let searchTimer = 0
+let requestId = 0
 
 const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'
 
-const assigneeOptions = computed(() => {
-  const map = new Map()
-  for (const ticket of tickets.value) {
-    if (ticket.assignee?.id) map.set(ticket.assignee.id, ticket.assignee.name)
-  }
-  return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
-})
-
-const filtered = computed(() => {
-  const query = search.value.trim().toLowerCase()
-  return tickets.value.filter((ticket) => {
-    if (status.value && ticket.status !== status.value) return false
-    if (priority.value && ticket.priority !== priority.value) return false
-    if (assignee.value === 'unassigned' && ticket.assignee_id) return false
-    if (assignee.value && assignee.value !== 'unassigned' && ticket.assignee_id !== assignee.value) {
-      return false
-    }
-    if (!query) return true
-    const haystack = [ticket.title, ticketCode(ticket), ticket.category, ticket.description, ticket.id]
-      .join(' ')
-      .toLowerCase()
-    return haystack.includes(query)
-  })
-})
-
-const pageCount = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)))
-const paged = computed(() => {
-  const start = (page.value - 1) * PAGE_SIZE
-  return filtered.value.slice(start, start + PAGE_SIZE)
-})
-const rangeStart = computed(() => (filtered.value.length === 0 ? 0 : (page.value - 1) * PAGE_SIZE + 1))
-const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, filtered.value.length))
 const filtersActive = computed(() => Boolean(status.value || priority.value || assignee.value))
+const queryActive = computed(() => filtersActive.value || Boolean(appliedSearch.value))
+const pageCount = computed(() => meta.value.total_pages || 0)
+const rangeStart = computed(() => (meta.value.total === 0 ? 0 : (page.value - 1) * meta.value.limit + 1))
+const rangeEnd = computed(() => Math.min(page.value * meta.value.limit, meta.value.total))
+const pageNumbers = computed(() => {
+  const total = pageCount.value
+  if (total <= 1) return []
+  const end = Math.min(total, Math.max(page.value + 2, 5))
+  const start = Math.max(1, end - 4)
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+})
+const rows = computed(() =>
+  tickets.value.map((ticket) => ({
+    ...ticket,
+    requester: ticket.requester || directoryPerson(people.value, ticket.requester_id),
+    assignee: ticket.assignee_id
+      ? ticket.assignee || directoryPerson(people.value, ticket.assignee_id, 'Assigned')
+      : null,
+  })),
+)
 
-watch([search, status, priority, assignee], () => {
+watch(search, (value) => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    appliedSearch.value = value.trim()
+  }, 300)
+})
+
+watch([appliedSearch, status, priority, assignee, sort], () => {
   page.value = 1
+  load()
 })
 
-watch(filtered, () => {
-  if (page.value > pageCount.value) page.value = 1
-})
+function setPage(next) {
+  if (next === page.value || next < 1 || (pageCount.value && next > pageCount.value)) return
+  page.value = next
+  load()
+}
 
 async function load() {
+  const current = ++requestId
   loading.value = true
   error.value = ''
+  const [sortBy, order] = sort.value.split(':')
   try {
-    tickets.value = (await fetchTickets()) || []
+    const result = await fetchTickets({
+      page: page.value,
+      limit: PAGE_SIZE,
+      status: status.value,
+      priority: priority.value,
+      assignee_id: assignee.value,
+      search: appliedSearch.value,
+      sort_by: sortBy,
+      order,
+    })
+    if (current !== requestId) return
+    const nextMeta = result.meta || {
+      page: page.value,
+      limit: PAGE_SIZE,
+      total: 0,
+      total_pages: 0,
+    }
+    // The filters can shrink the result while the user is past the last page.
+    if (nextMeta.total_pages > 0 && page.value > nextMeta.total_pages) {
+      page.value = nextMeta.total_pages
+      return load()
+    }
+    if (nextMeta.total_pages === 0 && page.value !== 1) {
+      page.value = 1
+      return load()
+    }
+    tickets.value = result.tickets || []
+    meta.value = nextMeta
+    loadedOnce.value = true
   } catch (err) {
+    if (current !== requestId) return
     error.value = getErrorMessage(err)
+    if (!loadedOnce.value) tickets.value = []
   } finally {
-    loading.value = false
+    if (current === requestId) loading.value = false
   }
 }
 
@@ -83,6 +131,7 @@ function clearFilters() {
 
 function clearAll() {
   search.value = ''
+  appliedSearch.value = ''
   clearFilters()
 }
 
@@ -99,10 +148,14 @@ function onKeydown(event) {
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
+  loadDirectory()
   load()
 })
 
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  clearTimeout(searchTimer)
+})
 </script>
 
 <template>
@@ -135,37 +188,43 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <option v-for="item in PRIORITIES" :key="item" :value="item">{{ priorityLabel(item) }}</option>
         </select>
         <select v-model="assignee" aria-label="Assignee">
-          <option value="">All Assignee</option>
+          <option value="">All assignees</option>
           <option value="unassigned">Unassigned</option>
-          <option v-for="[id, name] in assigneeOptions" :key="id" :value="id">{{ name }}</option>
+          <option v-for="user in staff" :key="user.id" :value="user.id">{{ user.name }}</option>
+        </select>
+        <select v-model="sort" aria-label="Sort">
+          <option v-for="item in SORTS" :key="item.value" :value="item.value">{{ item.label }}</option>
         </select>
         <button class="text-button" type="button" :disabled="!filtersActive" @click="clearFilters">
           × Clear filters
         </button>
-        <span v-if="!loading && !error" class="result-count">{{ filtered.length }} tickets</span>
+        <span v-if="loadedOnce && !error" class="result-count">{{ meta.total }} tickets</span>
       </div>
 
-      <div v-if="loading" class="state" role="status">
+      <p v-if="directoryError" class="alert error list-alert" role="alert">{{ directoryError }}</p>
+      <p v-if="error && tickets.length" class="alert error list-alert" role="alert">{{ error }}</p>
+
+      <div v-if="loading && !tickets.length" class="state" role="status">
         <span class="spinner"></span>
         Loading tickets...
       </div>
 
-      <div v-else-if="error" class="state">
+      <div v-else-if="error && !tickets.length" class="state">
         <h2>Could not load tickets</h2>
         <p>{{ error }}</p>
         <button class="btn btn-ghost" type="button" @click="load">Try again</button>
       </div>
 
-      <div v-else-if="filtered.length === 0" class="state">
-        <h2>{{ tickets.length === 0 ? 'No tickets yet' : 'No tickets found' }}</h2>
-        <p v-if="tickets.length === 0">Create a ticket and it will show up here.</p>
-        <p v-else>Try a different search or clear the filters.</p>
-        <RouterLink v-if="tickets.length === 0" class="btn btn-purple" to="/tickets/create">New Ticket</RouterLink>
+      <div v-else-if="tickets.length === 0" class="state">
+        <h2>{{ queryActive ? 'No tickets found' : 'No tickets yet' }}</h2>
+        <p v-if="queryActive">Try a different search or clear the filters.</p>
+        <p v-else>Create a ticket and it will show up here.</p>
+        <RouterLink v-if="!queryActive" class="btn btn-purple" to="/tickets/create">New Ticket</RouterLink>
         <button v-else class="btn btn-ghost" type="button" @click="clearAll">Clear filters</button>
       </div>
 
       <template v-else>
-        <div class="table-wrap">
+        <div class="table-wrap" :aria-busy="loading" :class="{ busy: loading }">
           <table>
             <thead>
               <tr>
@@ -178,7 +237,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </thead>
             <tbody>
               <tr
-                v-for="ticket in paged"
+                v-for="ticket in rows"
                 :key="ticket.id"
                 @click="openTicket(ticket.id)"
               >
@@ -213,8 +272,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           </table>
         </div>
 
-        <div class="cards">
-          <RouterLink v-for="ticket in paged" :key="ticket.id" class="ticket-card" :to="`/tickets/${ticket.id}`">
+        <div class="cards" :aria-busy="loading" :class="{ busy: loading }">
+          <RouterLink v-for="ticket in rows" :key="ticket.id" class="ticket-card" :to="`/tickets/${ticket.id}`">
             <div>
               <h3>{{ ticket.title }}</h3>
               <p class="meta">#{{ ticketCode(ticket) }} · {{ ticket.category }}</p>
@@ -243,19 +302,20 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
 
         <footer class="pager">
-          <span>Showing {{ rangeStart }} to {{ rangeEnd }} of {{ filtered.length }} tickets</span>
+          <span>Showing {{ rangeStart }} to {{ rangeEnd }} of {{ meta.total }} tickets</span>
           <nav v-if="pageCount > 1" aria-label="Pagination">
-            <button type="button" aria-label="Previous page" :disabled="page === 1" @click="page -= 1">‹</button>
+            <button type="button" aria-label="Previous page" :disabled="page === 1 || loading" @click="setPage(page - 1)">‹</button>
             <button
-              v-for="number in pageCount"
+              v-for="number in pageNumbers"
               :key="number"
               type="button"
               :aria-current="number === page ? 'page' : undefined"
-              @click="page = number"
+              :disabled="loading"
+              @click="setPage(number)"
             >
               {{ number }}
             </button>
-            <button type="button" aria-label="Next page" :disabled="page === pageCount" @click="page += 1">›</button>
+            <button type="button" aria-label="Next page" :disabled="page === pageCount || loading" @click="setPage(page + 1)">›</button>
           </nav>
         </footer>
       </template>
@@ -368,8 +428,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   font-size: 14px;
 }
 
+.list-alert {
+  margin: 12px 16px 0;
+}
+
 .table-wrap {
   overflow-x: auto;
+}
+
+.busy {
+  opacity: 0.55;
 }
 
 table {

@@ -19,6 +19,7 @@ import (
 	"github.com/yourname/helpdesk/internal/repository"
 	"github.com/yourname/helpdesk/internal/router"
 	"github.com/yourname/helpdesk/internal/service"
+	"github.com/yourname/helpdesk/migrations"
 )
 
 func main() {
@@ -127,6 +128,13 @@ func openDB(cfg *config.Config) (*sql.DB, error) {
 	if err := db.PingContext(ctx); err != nil {
 		db.Close()
 		return nil, err
+	}
+
+	migrateCtx, migrateCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer migrateCancel()
+	if err := migrations.Apply(migrateCtx, db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("apply migrations: %w", err)
 	}
 
 	log.Println("database connected")

@@ -15,11 +15,17 @@ const showPassword = ref(false)
 const error = ref('')
 const submitting = ref(false)
 
-const demos = [
-  { label: 'Admin', email: 'alex.kim@acme.com' },
-  { label: 'Agent', email: 'sarah.mitchell@acme.com' },
-  { label: 'Requester', email: 'james.carter@acme.com' },
-]
+const demos = useDummy
+  ? [
+      { label: 'Admin', email: 'alex.kim@acme.com' },
+      { label: 'Agent', email: 'sarah.mitchell@acme.com' },
+      { label: 'Requester', email: 'james.carter@acme.com' },
+    ]
+  : [
+      { label: 'Admin', email: 'admin@example.com' },
+      { label: 'Agent', email: 'agent@example.com' },
+      { label: 'Requester', email: 'requester@example.com' },
+    ]
 
 function fillDemo(value) {
   email.value = value
@@ -109,7 +115,7 @@ async function submit() {
         <RouterLink to="/register">Create one</RouterLink>
       </p>
 
-      <div v-if="useDummy" class="demo">
+      <div class="demo">
         <p>Demo password: password123</p>
         <div class="demo-list">
           <button

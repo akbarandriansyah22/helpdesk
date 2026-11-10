@@ -73,11 +73,43 @@ export function registerRequest(payload) {
   )
 }
 
-export function fetchTickets() {
+function compactParams(params) {
+  const query = {}
+  for (const [key, value] of Object.entries(params || {})) {
+    if (value !== '' && value !== null && value !== undefined) query[key] = value
+  }
+  return query
+}
+
+export async function fetchMe() {
   return call(
-    () => dummy.listTickets(),
-    () => api.get('/tickets'),
+    () => dummy.me(),
+    () => api.get('/me'),
   )
+}
+
+// List responses keep pagination beside the ticket array: { data, meta }.
+export async function fetchTickets(params = {}) {
+  const query = compactParams(params)
+  if (useDummy) {
+    await new Promise((resolve) => setTimeout(resolve, 280))
+    try {
+      return dummy.listTickets(query)
+    } catch (error) {
+      if (error?.redirect) redirectToLogin()
+      throw error
+    }
+  }
+
+  const response = await api.get('/tickets', { params: query })
+  const tickets = response.data?.data || []
+  const meta = response.data?.meta || {
+    page: Number(query.page) || 1,
+    limit: Number(query.limit) || 20,
+    total: tickets.length,
+    total_pages: tickets.length ? 1 : 0,
+  }
+  return { tickets, meta }
 }
 
 export function fetchTicket(id) {
@@ -94,11 +126,15 @@ export function createTicket(payload) {
   )
 }
 
-export function updateTicketStatus(id, status) {
+export function updateTicket(id, patch) {
   return call(
-    () => dummy.updateStatus(id, status),
-    () => api.patch(`/tickets/${id}/status`, { status }),
+    () => dummy.updateTicket(id, patch),
+    () => api.patch(`/tickets/${id}`, patch),
   )
+}
+
+export function updateTicketStatus(id, status) {
+  return updateTicket(id, { status })
 }
 
 export function fetchComments(ticketId) {
@@ -108,10 +144,10 @@ export function fetchComments(ticketId) {
   )
 }
 
-export function createComment(ticketId, body) {
+export function createComment(ticketId, body, isInternal = false) {
   return call(
-    () => dummy.createComment(ticketId, body),
-    () => api.post(`/tickets/${ticketId}/comments`, { body, is_internal: false }),
+    () => dummy.createComment(ticketId, body, isInternal),
+    () => api.post(`/tickets/${ticketId}/comments`, { body, is_internal: Boolean(isInternal) }),
   )
 }
 

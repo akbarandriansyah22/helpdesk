@@ -19,14 +19,16 @@ func writeError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidInput),
 		errors.Is(err, service.ErrInvalidRole),
-		errors.Is(err, service.ErrInvalidStatus):
+		errors.Is(err, service.ErrInvalidStatus),
+		errors.Is(err, service.ErrInvalidAssignee):
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	case errors.Is(err, service.ErrInvalidCredentials):
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 	case errors.Is(err, service.ErrForbidden),
 		errors.Is(err, service.ErrCannotChangeOwnRole):
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-	case errors.Is(err, service.ErrNotFound):
+	case errors.Is(err, service.ErrNotFound),
+		errors.Is(err, service.ErrAssigneeNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 	case errors.Is(err, service.ErrEmailTaken),
 		errors.Is(err, service.ErrInvalidTransition):

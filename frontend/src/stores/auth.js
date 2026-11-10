@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { TOKEN_KEY, USER_KEY } from '../constants'
-import { loginRequest, registerRequest } from '../services/api'
+import { fetchMe, loginRequest, registerRequest } from '../services/api'
 
 function readUser() {
   try {
@@ -18,6 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => Boolean(token.value && user.value))
   const isAdmin = computed(() => user.value?.role === 'admin')
+  const isStaff = computed(() => user.value?.role === 'agent' || user.value?.role === 'admin')
 
   function persist() {
     if (token.value) localStorage.setItem(TOKEN_KEY, token.value)
@@ -39,11 +40,22 @@ export const useAuthStore = defineStore('auth', () => {
     return registerRequest(payload)
   }
 
+  async function refresh() {
+    if (!token.value) return null
+    try {
+      user.value = await fetchMe()
+      persist()
+      return user.value
+    } catch {
+      return user.value
+    }
+  }
+
   function logout() {
     token.value = ''
     user.value = null
     persist()
   }
 
-  return { token, user, isAuthenticated, isAdmin, login, register, logout }
+  return { token, user, isAuthenticated, isAdmin, isStaff, login, register, refresh, logout }
 })

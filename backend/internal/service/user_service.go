@@ -26,6 +26,21 @@ func NewUserService(users repository.UserRepository) (*UserService, error) {
 	return &UserService{users: users}, nil
 }
 
+func (s *UserService) GetMe(ctx context.Context, userID uuid.UUID) (*model.User, error) {
+	if userID == uuid.Nil {
+		return nil, ErrInvalidInput
+	}
+
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return publicUser(user), nil
+}
+
 func (s *UserService) GetAllUsers(ctx context.Context, actorRole string) ([]model.User, error) {
 	if actorRole != RoleAgent && actorRole != RoleAdmin {
 		return nil, ErrForbidden
