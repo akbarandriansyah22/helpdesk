@@ -1,0 +1,123 @@
+{
+    "clientName": "Thunder Client",
+    "collectionName": "Helpdesk API",
+    "collectionId": "91cc0631-03e7-49de-ba1e-13a713ac3b3d",
+    "dateExported": "2026-11-10T19:57:41.515Z",
+    "version": "1.4",
+    "folders": [],
+    "requests": [
+        {
+            "_id": "44b102dd-8602-4c5e-a661-7667cf5130d4",
+            "colId": "91cc0631-03e7-49de-ba1e-13a713ac3b3d",
+            "containerId": "",
+            "name": "Register",
+            "url": "http://localhost:8080/api/auth/register",
+            "method": "POST",
+            "sortNum": 20000,
+            "created": "2026-11-10T19:32:44.086Z",
+            "modified": "2026-11-10T19:32:44.086Z",
+            "headers": [],
+            "body": {
+                "type": "json",
+                "raw": [
+                    "{",
+                    "  \"name\": \"John Doe\",",
+                    "  \"email\": \"john@example.com\",",
+                    "  \"password\": \"password123\"",
+                    "}"
+                ],
+                "form": []
+            }
+        },
+        {
+            "_id": "ffed771e-8d22-4522-80d8-69776a4e3d33",
+            "colId": "91cc0631-03e7-49de-ba1e-13a713ac3b3d",
+            "containerId": "",
+            "name": "Login",
+            "url": "http://localhost:8080/api/auth/login",
+            "method": "POST",
+            "sortNum": 40000,
+            "created": "2026-11-10T19:35:32.237Z",
+            "modified": "2026-11-10T19:35:32.237Z",
+            "headers": [],
+            "body": {
+                "type": "json",
+                "raw": [
+                    "{",
+                    "  \"email\": \"agent@example.com\",",
+                    "  \"password\": \"password123\"",
+                    "}"
+                ],
+                "form": []
+            }
+        },
+        {
+            "_id": "32086d5b-4e89-4ce7-b6f9-cb6c72baeb94",
+            "colId": "91cc0631-03e7-49de-ba1e-13a713ac3b3d",
+            "containerId": "",
+            "name": "Get Me",
+            "url": "http://localhost:8080/api/me",
+            "method": "GET",
+            "sortNum": 50000,
+            "created": "2026-11-10T19:36:49.631Z",
+            "modified": "2026-11-10T19:36:49.631Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZW1haWwiOiJhZ2VudEBleGFtcGxlLmNvbSIsInJvbGUiOiJhZ2VudCIsImlzcyI6ImhlbHBkZXNrIiwic3ViIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZXhwIjoxNzk0NDI1NzY5LCJpYXQiOjE3OTQzMzkzNjl9.J017nWlT68G6QploAsTzVjK3tFVSeHNnjk_4sk95HWk"
+                }
+            ]
+        },
+        {
+            "_id": "a12ef08f-7eaf-4173-9d17-02ec5ecf86ad",
+            "colId": "91cc0631-03e7-49de-ba1e-13a713ac3b3d",
+            "containerId": "",
+            "name": "List Tickets",
+            "url": "http://localhost:8080/api/tickets?Authorization=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZW1haWwiOiJhZ2VudEBleGFtcGxlLmNvbSIsInJvbGUiOiJhZ2VudCIsImlzcyI6ImhlbHBkZXNrIiwic3ViIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZXhwIjoxNzk0NDI2Njk2LCJpYXQiOjE3OTQzNDAyOTZ9.9chMzl_cq6-s7uNLT8PgSUNbenpZCD5smE-uN9v6E3I$token = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZW1haWwiOiJhZ2VudEBleGFtcGxlLmNvbSIsInJvbGUiOiJhZ2VudCIsImlzcyI6ImhlbHBkZXNrIiwic3ViIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZXhwIjoxNzk0NDI2Njk2LCJpYXQiOjE3OTQzNDAyOTZ9.9chMzl_cq6-s7uNLT8PgSUNbenpZCD5smE-uN9v6E3I\" Invoke-RestMethod -Uri \"http://localhost:8080/api/tickets\" -Headers @{ Authorization = \"Bearer $token\" }",
+            "method": "GET",
+            "sortNum": 60000,
+            "created": "2026-11-10T19:40:25.294Z",
+            "modified": "2026-11-10T19:40:25.294Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZW1haWwiOiJhZ2VudEBleGFtcGxlLmNvbSIsInJvbGUiOiJhZ2VudCIsImlzcyI6ImhlbHBkZXNrIiwic3ViIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZXhwIjoxNzk0NDI2Njk2LCJpYXQiOjE3OTQzNDAyOTZ9.9chMzl_cq6-s7uNLT8PgSUNbenpZCD5smE-uN9v6E3I$token = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZW1haWwiOiJhZ2VudEBleGFtcGxlLmNvbSIsInJvbGUiOiJhZ2VudCIsImlzcyI6ImhlbHBkZXNrIiwic3ViIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZXhwIjoxNzk0NDI2Njk2LCJpYXQiOjE3OTQzNDAyOTZ9.9chMzl_cq6-s7uNLT8PgSUNbenpZCD5smE-uN9v6E3I\" Invoke-RestMethod -Uri \"http://localhost:8080/api/tickets\" -Headers @{ Authorization = \"Bearer $token\" }",
+                    "isPath": false
+                }
+            ]
+        },
+        {
+            "_id": "c79f329d-fe16-46fc-ab81-96fa84d1c0a4",
+            "colId": "91cc0631-03e7-49de-ba1e-13a713ac3b3d",
+            "containerId": "",
+            "name": "Create Ticket",
+            "url": "http://localhost:8080/api/tickets?Authorization=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZW1haWwiOiJhZ2VudEBleGFtcGxlLmNvbSIsInJvbGUiOiJhZ2VudCIsImlzcyI6ImhlbHBkZXNrIiwic3ViIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZXhwIjoxNzk0NDI3MDExLCJpYXQiOjE3OTQzNDA2MTF9.mi_pV0ijekEeTcFNaGpHxTEA1cnpp5YIdgQuBrDDzDo",
+            "method": "POST",
+            "sortNum": 70000,
+            "created": "2026-11-10T19:55:34.531Z",
+            "modified": "2026-11-10T19:55:34.531Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZW1haWwiOiJhZ2VudEBleGFtcGxlLmNvbSIsInJvbGUiOiJhZ2VudCIsImlzcyI6ImhlbHBkZXNrIiwic3ViIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwiZXhwIjoxNzk0NDI3MDExLCJpYXQiOjE3OTQzNDA2MTF9.mi_pV0ijekEeTcFNaGpHxTEA1cnpp5YIdgQuBrDDzDo",
+                    "isPath": false
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": [
+                    "{\r",
+                    "  \"title\": \"Printer tidak bisa print\",\r",
+                    "  \"description\": \"Printer di lantai 2 error\",\r",
+                    "  \"category\": \"hardware\",\r",
+                    "  \"priority\": \"high\"\r",
+                    "}"
+                ],
+                "form": []
+            }
+        }
+    ],
+    "ref": "PLGmBbZ-2QX12VXUvYAsOZ_6QXqxbO9yiy89f6ALS9OltNOylEH4AmOBq1tuuPUa5AqhEshkeOnrGlozcleTsw"
+}
