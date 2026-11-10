@@ -1,4 +1,4 @@
-Berikut isi lengkap **README.md** yang bisa langsung kamu copy-paste ke root repo (`helpdesk/README.md`):
+
 
 ```markdown
 # Helpdesk Internal
